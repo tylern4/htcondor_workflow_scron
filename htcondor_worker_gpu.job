@@ -1,0 +1,53 @@
+#!/bin/bash
+#SBATCH -N 2
+#SBATCH -C gpu
+#SBATCH -A nstaff_g
+#SBATCH -t 00:20:00
+#SBATCH --job-name=htcondor_worker_gpu
+#SBATCH --ntasks-per-node=4
+# #SBATCH --exclusive
+#SBATCH -e /global/homes/t/tylern/htcondor_workflow_scron/logs/gpu_%j.err
+#SBATCH -o /global/homes/t/tylern/htcondor_workflow_scron/logs/gpu_%j.out
+
+
+function killall {
+    echo $(date)": Stopping workers"
+    kill $(ps aux | grep -v grep | grep -i condor | awk '{print $2}')
+    echo $(date)": Done!"
+}
+
+trap killall EXIT
+
+# Move to the correct folder
+cd ${HOME}/htcondor_workflow_scron
+
+# For each node start a worker
+echo $(date)": Starting Nodes "
+
+export CONDOR_INSTALL=/global/common/software/m3792/htcondor-9.11.2
+export PATH=$CONDOR_INSTALL/bin:$CONDOR_INSTALL/sbin:$PATH
+export LOGDIR=${SCRATCH}/htcondorscratch
+export CONDOR_PORT=9876
+export CONDOR_SERVER=$(cat ${LOGDIR}/currenthost)
+
+export CONDOR_CONFIG=${HOME}/htcondor_workflow_scron/htcondor_worker.conf
+echo $CONDOR_CONFIG
+
+module load PrgEnv-nvidia
+
+
+for node in $(scontrol show hostnames ${SLURM_NODELIST}); do
+    rm -rf ${LOGDIR}/$node
+
+    mkdir -p ${LOGDIR}/$node/log
+    mkdir -p ${LOGDIR}/$node/execute
+    mkdir -p ${LOGDIR}/$node/spool
+done;
+
+for node in $(scontrol show hostnames ${SLURM_NODELIST}); do
+    echo $node
+    srun -N 1 -n 1 -c 1 --gpus-per-task 4 condor_master -f &
+done;
+
+
+sleep infinity

@@ -1,0 +1,20 @@
+universe = vanilla
+log =./logs/$(Cluster).log
+error = ./logs/helloworld_$(Cluster)_$(Process).err
+output = ./logs/helloworld_$(Cluster)_$(Process).out
+
+transfer_executable = True
+transfer_input_files = helloworld.sh, gpus_for_tasks
+
+executable = helloworld.sh
+arguments = $(Process)
+
+should_transfer_files = YES
+when_to_transfer_output = ON_EXIT
+
+request_cpus = 1
+request_memory = 1GB
+request_disk = 1MB
+request_gpus = 8
+
+queue 10
